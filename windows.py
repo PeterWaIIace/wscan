@@ -8,35 +8,41 @@ class MyWin(observer.Observer):
         self.win = curses.newwin(h,w,bh,bg)
         self.linesToPrint = ["starting","lol"]
 
+        super().__init__()
+
     def loop(self):
-        for i in range(len(self.linesToPrint)):
-            self.win.addstr('something to print lol: {}\n'.format(self.linesToPrint[i]))
-        
+        self._lock == True
+        for i in range(2):#len(self.linesToPrint)):
+            self.win.addstr("hello")
+        self._lock == False
 
     def refresh(self):
         self.win.refresh() 
 
     def update(self,args):
-        self.linesToPrint = args
+        if self._lock == False:
+            # print("updated")
+            self.linesToPrint = args
 
 
 class App():
 
     def __init__(self):
         self.arrows = {261:"rightarrow",260:"leftarrow",258:"downarrow",259:"uparrow"}
+
+    def wapper_thread(self,interface):
         wrapper(self.main)
 
     def main(self,stdscr):
     # Clear screen
+        self.DetectedNetworksWin=MyWin(stdscr, 50, 400,0,0)
         while True:
-            stdscr.clear()
-            height = 0; width = 0
-
-            self.DetectedNetworksWin=MyWin(stdscr, height,width,0,0)## curses.LINES - 1, curses.COLS - 1,0, int(curses.COLS/2))
+            # stdscr.clear()
+            ## curses.LINES - 1, curses.COLS - 1,0, int(curses.COLS/2)) 
             self.DetectedNetworksWin.loop()
-
             # self.userInput(stdscr)
             self.DetectedNetworksWin.refresh()
+            # stdscr.refresh()
 
     def userInput(self,stdscr):
         while True:

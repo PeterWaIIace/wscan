@@ -16,6 +16,7 @@ class Sniffer(observer.Subject):
     def __init__(self):
         self.channel = 13
         self.AP = dict()
+        super().__init__()
 
     def send_msg(self,iface):
 
@@ -55,22 +56,21 @@ class Sniffer(observer.Subject):
         sniff(iface=interface, prn=self.findSSID, stop_filter = self.stopfilter)
 
     def findSSID(self,pkt):
-        device=pkt.getlayer(Dot11)
-        self.list_of_AP = []
-        if device.addr2 not in addresses:
-            addresses.append(device.addr2)
-            if pkt.haslayer(Dot11Beacon):
-                ssid = pkt.getlayer(Dot11Elt).info
-                print(device.addr1,device.addr2,device.addr3,device.payload.name,ssid)
-                self.AP[device.addr2] = ssid
-                self.list_of_AP.append(ssid)
-            else:
-                ac_cli_pairs_channel.append((device.addr1,device.addr2,self.channel))
-                if device.addr1 in self.AP:
-                    print(self.AP[device.addr1],device.addr2,device.addr3,device.payload.name)
-                else: 
-                    print(device.addr1,device.addr2,device.addr3,device.payload.name)
-        print("heere")
+        # device=pkt.getlayer(Dot11)
+        # self.list_of_AP = []
+        # if device.addr2 not in addresses:
+        #     addresses.append(device.addr2)
+        #     if pkt.haslayer(Dot11Beacon):
+        #         ssid = pkt.getlayer(Dot11Elt).info
+        #         print(device.addr1,device.addr2,device.addr3,device.payload.name,ssid)
+        #         self.AP[device.addr2] = ssid
+        #         self.list_of_AP.append(ssid)
+        #     else:
+        #         ac_cli_pairs_channel.append((device.addr1,device.addr2,self.channel))
+        #         if device.addr1 in self.AP:
+        #             print(self.AP[device.addr1],device.addr2,device.addr3,device.payload.name)
+        #         else: 
+        #             print(device.addr1,device.addr2,device.addr3,device.payload.name)
         self._subject_state=["tralalala","tralalal2"]
         self._notify()
 
@@ -88,23 +88,27 @@ class Sniffer(observer.Subject):
 if __name__=="__main__":
     windows=windows.App()  
     sniffer=Sniffer() 
-    sniffer.attach(windows.DetectedNetworksWin) # observing sniffer 
+     # observing sniffer 
     interface = 'wlp3s0'
-    # # os.system('sudo airmon-ng start %s' % (interface))
-    # # interface += 'mon'
+    os.system('sudo airmon-ng start %s' % (interface))
+    interface += 'mon'
+
+    threadWin = threading.Thread(target=windows.wapper_thread, args=(interface, ), name="windows") 
+    threadWin.daemon = True
+    threadWin.start()
+
+    sniffer.attach(windows.DetectedNetworksWin)
 
     thread1 = threading.Thread(target=sniffer.hopper, args=(interface, ), name="hopper")
     thread1.daemon = True
     thread1.start()
 
-    thread2 = threading.Thread(target=sniffer.sniffer_thread, args=(interface,), name="sniffer")
+    thread2 = threading.Thread(target=sniffer.sniffer_thread,args=(interface, ), name="sniffer")
     thread2.daemon = True
     thread2.start()
 
-    threadWin = threading.Thread(target=windows.main, args=(interface, ), name="windows") 
-    thread1.daemon = True
-    threadWin.start()
-
+    while True:
+        pass
     # stime = time.time()
     # ctime = 0
     # while ctime < ftime:
