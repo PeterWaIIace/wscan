@@ -56,22 +56,23 @@ class Sniffer(observer.Subject):
         sniff(iface=interface, prn=self.findSSID, stop_filter = self.stopfilter)
 
     def findSSID(self,pkt):
-        # device=pkt.getlayer(Dot11)
-        # self.list_of_AP = []
-        # if device.addr2 not in addresses:
-        #     addresses.append(device.addr2)
-        #     if pkt.haslayer(Dot11Beacon):
-        #         ssid = pkt.getlayer(Dot11Elt).info
-        #         print(device.addr1,device.addr2,device.addr3,device.payload.name,ssid)
-        #         self.AP[device.addr2] = ssid
-        #         self.list_of_AP.append(ssid)
-        #     else:
-        #         ac_cli_pairs_channel.append((device.addr1,device.addr2,self.channel))
-        #         if device.addr1 in self.AP:
-        #             print(self.AP[device.addr1],device.addr2,device.addr3,device.payload.name)
-        #         else: 
-        #             print(device.addr1,device.addr2,device.addr3,device.payload.name)
-        self._subject_state=["tralalala","tralalal2"]
+        device=pkt.getlayer(Dot11)
+        self.list_of_AP = []
+        if device.addr2 not in addresses:
+            addresses.append(device.addr2)
+            if pkt.haslayer(Dot11Beacon):
+                ssid = pkt.getlayer(Dot11Elt).info
+                # print(device.addr1,device.addr2,device.addr3,device.payload.name,ssid)
+                self.AP[device.addr2] = ssid
+                self.list_of_AP.append(ssid)
+            else:
+                ac_cli_pairs_channel.append((device.addr1,device.addr2,self.channel))
+                
+                # if device.addr1 in self.AP:
+                    # print(self.AP[device.addr1],device.addr2,device.addr3,device.payload.name)
+                # else: 
+                    # print(device.addr1,device.addr2,device.addr3,device.payload.name)
+        self._subject_state=self.list_of_AP
         self._notify()
 
     def hopper(self,interface):

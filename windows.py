@@ -6,14 +6,15 @@ class MyWin(observer.Observer):
 
     def __init__(self,stdscr,h,w,bh,bg):
         self.win = curses.newwin(h,w,bh,bg)
-        self.linesToPrint = ["starting","lol"]
+        self.win.scrollok(1)
+        self.linesToPrint = []
 
         super().__init__()
 
     def loop(self):
         self._lock == True
-        for i in range(2):#len(self.linesToPrint)):
-            self.win.addstr("hello")
+        for i in range(len(self.linesToPrint)):
+            self.win.addstr("{}\n".format(self.linesToPrint[i]),)
         self._lock == False
 
     def refresh(self):
